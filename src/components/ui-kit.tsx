@@ -90,7 +90,7 @@ export function Screen({ icon, text, children }: { icon: IconName; text: string;
 }
 
 export type IconName =
-  | "coffee" | "maize" | "beans" | "other" | "phone" | "pin" | "field" | "shield" | "check"
+  | "coffee" | "maize" | "beans" | "sugarcane" | "other" | "phone" | "pin" | "field" | "shield" | "check"
   | "speaker" | "back" | "gear" | "leaf" | "refresh" | "plus" | "minus";
 
 export function Icon({ name, size = 24 }: { name: IconName; size?: number }) {
@@ -100,6 +100,7 @@ export function Icon({ name, size = 24 }: { name: IconName; size?: number }) {
   };
   switch (name) {
     case "coffee": return <svg {...p}><ellipse cx="12" cy="12" rx="6" ry="9" /><path d="M12 3c-2 4 2 14 0 18" /></svg>;
+    case "sugarcane": return <svg {...p}><path d="M9 21V3M15 21V3M9 8h0M9 14h0M15 6h0M15 12h0" /><path d="M7 8h4M7 14h4M13 6h4M13 12h4M15 3c2 0 4 1 5 3M9 3C7 3 5 4 4 6" /></svg>;
     case "maize": return <svg {...p}><path d="M12 21V8" /><ellipse cx="12" cy="8" rx="3" ry="6" /><path d="M12 21c-4-2-6-6-6-9M12 21c4-2 6-6 6-9" /></svg>;
     case "beans": return <svg {...p}><path d="M8 4c3 0 4 3 3 6s-1 6-4 6-4-4-3-7 1-5 4-5z" /><path d="M17 8c2 0 3 2 2 5s-1 5-3 5-3-3-2-6 1-4 3-4z" /></svg>;
     case "other": return <svg {...p}><circle cx="6" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="18" cy="12" r="1.5" /></svg>;

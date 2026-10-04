@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { roundCoord, stepArea, isValidPhone } from "@/lib/farm";
+import { roundCoord, stepArea, isValidPhone, fullPhone } from "@/lib/farm";
 
 describe("farm rules", () => {
   it("rounds coordinates to 2 decimals", () => {
@@ -14,5 +14,21 @@ describe("farm rules", () => {
   it("needs exactly 10 digits", () => {
     expect(isValidPhone("9876543210")).toBe(true);
     expect(isValidPhone("987654321")).toBe(false);
+  });
+});
+
+describe("country codes", () => {
+  it("keeps the 10-digit rule only for +91", () => {
+    expect(isValidPhone("9876543210", "+91")).toBe(true);
+    expect(isValidPhone("98765432", "+91")).toBe(false);
+  });
+  it("accepts 7 to 14 digits for +49", () => {
+    expect(isValidPhone("1234567", "+49")).toBe(true);
+    expect(isValidPhone("12345678901234", "+49")).toBe(true);
+    expect(isValidPhone("123456", "+49")).toBe(false);
+    expect(isValidPhone("123456789012345", "+49")).toBe(false);
+  });
+  it("sends the full international number", () => {
+    expect(fullPhone("+49", "15112345678")).toBe("+4915112345678");
   });
 });
