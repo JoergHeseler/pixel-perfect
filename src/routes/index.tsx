@@ -57,9 +57,9 @@ function App() {
   const lastStep = editing ? 3 : 4;
   const go = (d: 1 | -1) => {
     if (d === -1 && idx === 0) return setView(editing ? "settings" : "welcome");
-    if (d === -1) return setView(STEPS[idx - 1]);
+    if (d === -1) return setView(STEPS[idx - 1]!);
     if (editing && idx === lastStep) return saveEdit();
-    setView(STEPS[idx + 1]);
+    setView(STEPS[idx + 1]!);
   };
 
   async function saveNew() {
@@ -299,8 +299,8 @@ function Home({ onSettings }: { onSettings: () => void }) {
       <TopBar right={<button className="btn-ghost" aria-label={t.settings} onClick={onSettings}><Icon name="gear" /></button>} />
       <div
         className="flex flex-1 flex-col gap-4 px-4 pb-28 pt-3"
-        onTouchStart={(e) => { if (window.scrollY === 0) startY.current = e.touches[0].clientY; }}
-        onTouchMove={(e) => { if (startY.current !== null) setPull(Math.min(100, Math.max(0, e.touches[0].clientY - startY.current))); }}
+        onTouchStart={(e) => { if (window.scrollY === 0) startY.current = e.touches[0]!.clientY; }}
+        onTouchMove={(e) => { if (startY.current !== null) setPull(Math.min(100, Math.max(0, e.touches[0]!.clientY - startY.current))); }}
         onTouchEnd={() => { if (pull > 70) load(); setPull(0); startY.current = null; }}
       >
         <div style={{ height: pull / 2 }} aria-hidden="true" />
