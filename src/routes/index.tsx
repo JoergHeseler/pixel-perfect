@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/lib/i18n";
 import { HELPLINE_NUMBER } from "@/lib/config";
-import { roundCoord, stepArea, isValidPhone } from "@/lib/farm";
+import { roundCoord, stepArea, isValidPhone, maxDigits, fullPhone, splitPhone, COUNTRY_CODES, UP_PLACES } from "@/lib/farm";
 import {
   register, fetchCases, flushPending, updateDetails, deleteMe, store,
   type Case, type Registration,
@@ -23,8 +23,8 @@ export const Route = createFileRoute("/")({
 
 type View = "welcome" | "phone" | "loc" | "crop" | "area" | "consent" | "done" | "home" | "settings";
 const STEPS: View[] = ["phone", "loc", "crop", "area", "consent"];
-const CROPS: { id: "coffee" | "maize" | "beans" | "other"; icon: IconName }[] = [
-  { id: "coffee", icon: "coffee" }, { id: "maize", icon: "maize" }, { id: "beans", icon: "beans" }, { id: "other", icon: "other" },
+const CROPS: { id: "coffee" | "maize" | "beans" | "sugarcane" | "other"; icon: IconName }[] = [
+  { id: "sugarcane", icon: "sugarcane" }, { id: "coffee", icon: "coffee" }, { id: "maize", icon: "maize" }, { id: "beans", icon: "beans" }, { id: "other", icon: "other" },
 ];
 const telHref = `tel:${HELPLINE_NUMBER.replace(/[^\d+]/g, "")}`;
 
@@ -37,6 +37,7 @@ function App() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Registration>(empty);
   const [msg, setMsg] = useState("");
+  const [cc, setCc] = useState<string>("+91");
   const [busy, setBusy] = useState(false);
   const upd = (p: Partial<Registration>) => setForm((f) => ({ ...f, ...p }));
 
@@ -65,7 +66,7 @@ function App() {
   async function saveNew() {
     setBusy(true);
     try {
-      const r = await register({ ...form, consent: true });
+      const r = await register({ ...form, phone: fullPhone(cc, form.phone), consent: true });
       setView("done");
       if (r === "queued") setTimeout(() => setMsg(t.savedOffline), 0);
     } catch {
@@ -75,7 +76,7 @@ function App() {
   async function saveEdit() {
     setBusy(true);
     try {
-      await updateDetails(form);
+      await updateDetails({ ...form, phone: fullPhone(cc, form.phone) });
       setEditing(false);
       setView("settings");
       setTimeout(() => setMsg(t.updated), 0);
@@ -83,7 +84,7 @@ function App() {
   }
 
   const canNext =
-    view === "phone" ? isValidPhone(form.phone)
+    view === "phone" ? isValidPhone(form.phone, cc)
     : view === "loc" ? form.lat !== null || form.place.trim().length > 1
     : view === "crop" ? form.crops.length > 0 : true;
 
@@ -105,7 +106,7 @@ function App() {
         <>
           <TopBar onBack={() => go(-1)} />
           <Dots step={idx + 1} total={editing ? 4 : 5} />
-          {view === "phone" && <PhoneStep value={form.phone} onChange={(phone) => upd({ phone })} />}
+          {view === "phone" && <PhoneStep value={form.phone} code={cc} onCode={(c) => { setCc(c); upd({ phone: form.phone.slice(0, maxDigits(c)) }); }} onChange={(phone) => upd({ phone })} />}
           {view === "loc" && <LocStep form={form} upd={upd} />}
           {view === "crop" && (
             <Screen icon="leaf" text={t.cropQ}>
@@ -186,7 +187,7 @@ function App() {
           <TopBar onBack={() => setView("home")} />
           <Settings
             msg={msg}
-            onEdit={() => { setForm({ ...empty, ...store.details(), consent: true }); setEditing(true); setView("phone"); }}
+            onEdit={() => { const d = { ...empty, ...store.details(), consent: true }; const sp = splitPhone(d.phone); setCc(sp.code); setForm({ ...d, phone: sp.digits }); setEditing(true); setView("phone"); }}
             onDeleted={() => { setForm(empty); setView("welcome"); }}
           />
         </>
@@ -195,19 +196,23 @@ function App() {
   );
 }
 
-function PhoneStep({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function PhoneStep({ value, code, onCode, onChange }: { value: string; code: string; onCode: (c: string) => void; onChange: (v: string) => void }) {
   const { t } = useLang();
-  const bad = value.length === 10 && !isValidPhone(value);
+  const max = maxDigits(code);
+  const bad = code === "+91" ? value.length === 10 && !isValidPhone(value, code) : value.length >= 7 && !isValidPhone(value, code);
   return (
     <Screen icon="phone" text={t.phoneQ}>
       <p className="text-center text-lg">{t.phoneHint}</p>
       <label className="flex items-center rounded-xl border-2 border-foreground text-2xl font-bold">
-        <span className="px-4" aria-hidden="true">+91</span>
+        <select aria-label={t.countryCode} value={code} onChange={(e) => onCode(e.target.value)}
+          className="min-h-14 rounded-l-xl border-r-2 border-foreground bg-transparent px-2 text-xl font-bold">
+          {COUNTRY_CODES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
         <span className="sr-only">{t.phoneQ}</span>
         <input
-          inputMode="numeric" autoComplete="tel-national" maxLength={10}
+          inputMode="numeric" autoComplete="tel-national" maxLength={max}
           className="min-h-14 w-full rounded-r-xl bg-transparent px-2 tracking-widest outline-none"
-          value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
+          value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, max))}
         />
       </label>
       {bad && <p role="alert" className="text-lg font-semibold text-destructive">{t.phoneBad}</p>}
@@ -216,7 +221,7 @@ function PhoneStep({ value, onChange }: { value: string; onChange: (v: string) =
           k === "" ? <span key="blank" /> : (
             <button key={k} type="button" className="key"
               aria-label={k === "del" ? t.delete : k}
-              onClick={() => onChange(k === "del" ? value.slice(0, -1) : (value + k).slice(0, 10))}>
+              onClick={() => onChange(k === "del" ? value.slice(0, -1) : (value + k).slice(0, max))}>
               {k === "del" ? "⌫" : k}
             </button>
           ))}
@@ -246,6 +251,15 @@ function LocStep({ form, upd }: { form: Registration; upd: (p: Partial<Registrat
       )}
       {state === "ok" && <p role="status" className="note-ok"><Icon name="check" /> {t.locGot}</p>}
       {state === "fail" && <p role="alert" className="note">{t.locFail}</p>}
+      <label className="flex flex-col gap-2 text-lg font-semibold">
+        {t.pickPlace}
+        <select className="min-h-14 rounded-xl border-2 border-foreground bg-background px-4 text-xl"
+          value={UP_PLACES.some((p) => p.name === form.place) ? form.place : ""}
+          onChange={(e) => { const p = UP_PLACES.find((x) => x.name === e.target.value); if (p) { upd({ place: p.name, lat: p.lat, lon: p.lon }); setState("ok"); } }}>
+          <option value="" disabled>—</option>
+          {UP_PLACES.map((p) => <option key={p.name} value={p.name}>{p.name}, Uttar Pradesh</option>)}
+        </select>
+      </label>
       {(state === "fail" || form.place) && (
         <label className="flex flex-col gap-2 text-lg font-semibold">
           {t.village}
