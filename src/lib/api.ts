@@ -51,6 +51,7 @@ function headers(auth = false): HeadersInit {
 }
 
 async function req(path: string, init: RequestInit) {
+  if (API_BASE_URL.startsWith("[")) throw new TypeError("API not configured");
   const res = await fetch(`${API_BASE_URL}${path}`, init);
   if (!res.ok) throw new Error(String(res.status));
   return res;
@@ -66,7 +67,9 @@ export async function register(data: Registration): Promise<"sent" | "queued"> {
     localStorage.removeItem(K.pending);
     return "sent";
   } catch (e) {
-    if (!navigator.onLine || e instanceof TypeError) {
+    const status = Number((e as Error).message);
+    const notConfigured = API_BASE_URL.startsWith("[");
+    if (notConfigured || !navigator.onLine || e instanceof TypeError || status >= 500) {
       set(K.pending, data);
       return "queued";
     }
