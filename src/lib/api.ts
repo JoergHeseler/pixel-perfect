@@ -46,7 +46,7 @@ function headers(auth = false): HeadersInit {
     "ngrok-skip-browser-warning": "true",
   };
   const tok = store.token();
-  if (auth && tok) h.Authorization = `Bearer ${tok}`;
+  if (auth && tok) h["Authorization"] = `Bearer ${tok}`;
   return h;
 }
 
